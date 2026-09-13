@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>شلتنا - عزل وتوزيع فرق الملاعب | تطوير تيتو ⚡</title>
+  
+  <!-- Google Fonts: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- PWA & Mobile Meta Tags (Optimized for iOS Safari & Android) -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#00ff87">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="شلتنا">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png">
+  
+  <link rel="stylesheet" href="./style.css">
+
+  <!-- Local Firebase SDK (Optimized 0ms Realtime Database) -->
+  <script src="./firebase-app-compat.js"></script>
+  <script src="./firebase-database-compat.js"></script>
+</head>
+<body>
+
+<div class="app-container">
+  
+  <!-- Top App Header (Clean & Uncrowded) -->
+  <header class="app-header">
+    <div class="brand">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="brand-ball">⚽</div>
+        <div class="brand-text-wrap">
+          <div class="brand-title">
+            شلتنا <span>Sheletna</span>
+            <span class="tito-dev-badge">⚡ تطوير: تيتو</span>
+          </div>
+          <p class="brand-subtitle">عزل وتوزيع الفرق وإدارة مباريات الشلة</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <!-- Player Profile Badge (Visible when player is registered) -->
+      <div id="header-my-player" class="header-my-player" style="display: none;" title="بياناتي">
+        <img id="header-my-avatar" class="header-my-avatar-img" src="./icons/icon-192.png" alt="صورتي">
+        <span id="header-my-name" class="header-my-name">اللاعب</span>
+      </div>
+
+      <!-- Captain Mode / Role Switcher (Prominent at Top) -->
+      <button id="btn-role-switch" class="role-badge-btn guest-active" title="تسجيل الدخول ككابتن">
+        👑 تسجيل كابتن
+      </button>
+
+      <!-- In-App Notification Center Bell Button -->
+      <button id="btn-open-notifications" class="btn btn-secondary btn-icon notif-bell-btn" title="مركز الإشعارات والتنبيهات">
+        🔔
+        <span id="notif-badge-count" class="notif-badge" style="display: none;">0</span>
+      </button>
+
+      <!-- Whistle Sound -->
+      <button id="btn-whistle-sound" class="btn btn-secondary btn-icon" title="صفارة الحكم">
+        📣
+      </button>
+    </div>
+  </header>
+
+  <!-- Device-Synchronized Next Match Smart Widget -->
+  <section id="next-match-card" class="next-match-card">
+    <div class="next-match-top-row">
+      <div class="next-match-pill-tag">
+        <span class="live-dot"></span>
+        <span id="next-match-badge-text">⚽ الماتش القادم للشلة</span>
+      </div>
+      <div id="next-match-countdown" class="next-match-countdown">
+        ⏳ جاري فحص توقيت الهاتف...
+      </div>
+    </div>
+    <div class="next-match-body">
+      <div class="next-match-details">
+        <h3 id="next-match-headline" class="next-match-headline">جاري قراءة المواعيد من جهازك...</h3>
+        <p id="next-match-subline" class="next-match-subline">يرجى من جميع اللعيبة تأكيد الحضور والجاهزية ⚽</p>
+      </div>
+      <button id="btn-quick-attendance" class="btn btn-primary btn-sm next-match-btn">
+        ✋ تأكيد حضوري للماتش
+      </button>
+    </div>
+  </section>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-view="pitch-view">
+      🏟️ الملعب والتشكيلة
+    </button>
+    <button class="nav-tab" data-view="players-view" id="tab-btn-players" style="display: none;">
+      👥 قائمة اللعيبة (<span id="tab-attendance-count">0</span>)
+    </button>
+    <button class="nav-tab" data-view="match-view">
+      ⚽ النتيجة والمواعيد الثابتة
+    </button>
+    <button class="nav-tab" data-view="history-view">
+      📜 سجل المباريات
+    </button>
+  </nav>
+
+  <!-- ======================================================== -->
+  <!-- TAB 1: PITCH & LINEUP VIEW -->
+  <!-- ======================================================== -->
+  <main id="pitch-view" class="view-content active">
+    
+    <!-- Controls Bar: Captain Only (Hidden for regular players) -->
+    <section id="captain-pitch-controls" class="controls-card" style="display: none;">
+      <div class="controls-row">
+        <div class="control-group">
+          <label class="control-label" for="select-game-format">نوع الماتش:</label>
+          <select id="select-game-format" class="select-styled">
+            <option value="5">خماسي (5 ضد 5)</option>
+            <option value="6">سداسي (6 ضد 6)</option>
+            <option value="7">سباعي (7 ضد 7)</option>
+            <option value="8">ثماني (8 ضد 8)</option>
+            <option value="11">ملعب كامل (11 ضد 11)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label" for="select-balance-mode">طريقة الفرز:</label>
+          <select id="select-balance-mode" class="select-styled">
+            <option value="smart">⚡ فرز ذكي متكافئ</option>
+            <option value="random">🎲 قرعة عشوائية</option>
+          </select>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button id="btn-distribute-teams" class="btn btn-primary">
+            🔀 فرز وتوزيع الفرق
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Player Identity & Quick Actions Bar -->
+    <div id="player-identity-bar" class="player-identity-bar">
+      <!-- Unregistered Player CTA -->
+      <button id="btn-open-self-register-pitch" class="btn btn-gold">
+        📝 تسجيل اسمي وصورتي في الشلة
+      </button>
+
+      <!-- Registered Player Profile Badge -->
+      <div id="my-profile-card" class="my-profile-card" style="display: none;">
+        <div class="my-profile-user-wrap">
+          <img id="my-avatar-thumb" class="my-avatar-thumb" src="./icons/icon-192.png" alt="صورتي">
+          <div class="my-profile-texts">
+            <div class="my-profile-greeting">أهلاً يا بطل ⚽</div>
+            <div id="my-profile-name" class="my-profile-name">لاعب الشلة</div>
+          </div>
+        </div>
+        <div class="my-profile-btn-group">
+          <button id="btn-toggle-my-attendance" class="btn btn-sm btn-primary">
+            ✅ حاضر اليوم
+          </button>
+          <button id="btn-edit-my-profile" class="btn btn-sm btn-secondary" title="تعديل اسمي أو صورتي">
+            ✏️
+          </button>
+        </div>
+      </div>
+
+      <button id="btn-share-whatsapp" class="btn btn-whatsapp captain-only-action" style="display: none;">
+        💬 إرسال التشكيلة للواتساب
+      </button>
+    </div>
+
+    <!-- Team Comparison & Fairness Bar (Captain Only) -->
+    <section class="match-overview" id="team-match-overview" style="display: none;">
+      <!-- Team A -->
+      <div class="team-header-box team-a">
+        <div class="team-title-wrap">
+          <span class="team-badge-color"></span>
+          <span class="team-name" id="team-a-name">الفريق الأخضر</span>
+        </div>
+        <div class="team-stats">
+          <span>معدل القوة: <strong class="team-power-rating" id="team-a-rating">0</strong></span>
+          <span id="team-a-count" style="margin-right: 8px;">(0 لاعبين)</span>
+        </div>
+      </div>
+
+      <!-- Center VS -->
+      <div class="vs-center-box">
+        <div class="vs-badge">VS</div>
+        <div id="fairness-badge" class="balance-pill balanced">
+          ⚖️ تكافؤ ممتاز (100%)
+        </div>
+      </div>
+
+      <!-- Team B -->
+      <div class="team-header-box team-b">
+        <div class="team-title-wrap">
+          <span class="team-badge-color"></span>
+          <span class="team-name" id="team-b-name">الفريق الأزرق</span>
+        </div>
+        <div class="team-stats">
+          <span>معدل القوة: <strong class="team-power-rating" id="team-b-rating">0</strong></span>
+          <span id="team-b-count" style="margin-right: 8px;">(0 لاعبين)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Captain-only swap hint (Hidden for regular players) -->
+    <div id="captain-swap-hint" style="text-align: center; margin-bottom: 8px; display: none;">
+      <span class="swap-hint">💡 كابتن: اضغط على أي لاعب في الملعب لتبديل مكانه</span>
+    </div>
+
+    <!-- 3D Virtual Pitch -->
+    <div class="pitch-3d-wrapper">
+      <section class="pitch-3d-field" id="pitch-field">
+        <div class="pitch-goal-top"></div>
+        <div class="pitch-box-top"></div>
+        <div class="pitch-center-circle"></div>
+        <div class="pitch-center-spot"></div>
+        <div class="pitch-half-line"></div>
+        <div class="pitch-box-bottom"></div>
+        <div class="pitch-goal-bottom"></div>
+
+        <!-- Team A Zone (Top Half) -->
+        <div class="pitch-team-zone" id="pitch-team-a-zone"></div>
+
+        <!-- Team B Zone (Bottom Half) -->
+        <div class="pitch-team-zone" id="pitch-team-b-zone"></div>
+      </section>
+    </div>
+
+    <!-- Subs Section -->
+    <section id="subs-section" class="subs-section" style="display: none;">
+      <div class="subs-title">
+        <span>🪑 دكة الاحتياط والتبديلات:</span>
+        <span id="subs-count"></span>
+      </div>
+      <div id="subs-list" class="subs-list"></div>
+    </section>
+  </main>
+
+
+  <!-- ======================================================== -->
+  <!-- TAB 2: PLAYERS MANAGEMENT VIEW -->
+  <!-- ======================================================== -->
+  <section id="players-view" class="view-content">
+    <div class="players-bar">
+      <div class="attendance-counter">
+        <span>🏃‍♂️ الحاضرون لماتش اليوم:</span>
+        <strong id="bar-attendance-count">0</strong>
+        <span style="color: var(--text-dim); font-size: 0.85rem;">من إجمالي <span id="bar-total-count">0</span></span>
+      </div>
+
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="input-search-players" class="search-input" placeholder="ابحث عن لاعب بالشلة...">
+      </div>
+
+      <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+        <button id="btn-open-self-register-players" class="btn btn-gold btn-sm">📝 تسجيل لاعب جديد</button>
+        <!-- Captain-Only Actions in Players View -->
+        <button id="btn-select-all" class="btn btn-secondary btn-sm captain-only-action" style="display: none;">تحديد الكل</button>
+        <button id="btn-unselect-all" class="btn btn-secondary btn-sm captain-only-action" style="display: none;">إلغاء التحديد</button>
+        <button id="btn-reset-sample-squad" class="btn btn-secondary btn-sm captain-only-action" style="display: none;" title="استعادة قائمة لعيبة تجريبية">🔄 تشكيلة جاهزة</button>
+      </div>
+    </div>
+
+    <div id="players-grid" class="players-grid"></div>
+  </section>
+
+
+  <!-- ======================================================== -->
+  <!-- TAB 3: MATCH RESULTS & FIXED SCHEDULE VIEW -->
+  <!-- ======================================================== -->
+  <section id="match-view" class="view-content">
+    
+    <!-- Scoreboard -->
+    <div class="scoreboard-card">
+      <h2 style="font-size: 1.15rem; color: var(--neon-green); margin-bottom: 18px; font-weight: 800;">
+        ⚽ نتيجة وأحداث ماتش اليوم
+      </h2>
+      
+      <div class="score-display-wrap">
+        <!-- Team A -->
+        <div class="score-team-box">
+          <span class="score-team-name" id="score-team-a-name" style="color: var(--team-a);">الفريق الأخضر</span>
+          <div class="score-number" id="score-team-a-val" style="color: var(--team-a);">0</div>
+          <!-- Captain Only Score Buttons -->
+          <div class="score-controls captain-only-action" style="display: none;">
+            <button id="btn-goal-a-plus" class="btn btn-primary btn-sm">+ هدف ⚽</button>
+            <button id="btn-goal-a-minus" class="btn btn-secondary btn-sm">-1</button>
+          </div>
+        </div>
+
+        <div class="score-divider">:</div>
+
+        <!-- Team B -->
+        <div class="score-team-box">
+          <span class="score-team-name" id="score-team-b-name" style="color: var(--team-b);">الفريق الأزرق</span>
+          <div class="score-number" id="score-team-b-val" style="color: var(--team-b);">0</div>
+          <!-- Captain Only Score Buttons -->
+          <div class="score-controls captain-only-action" style="display: none;">
+            <button id="btn-goal-b-plus" class="btn btn-secondary btn-sm" style="border-color: var(--team-b); color: var(--team-b);">+ هدف ⚽</button>
+            <button id="btn-goal-b-minus" class="btn btn-secondary btn-sm">-1</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scorers Log -->
+      <div class="scorers-log">
+        <div class="scorers-title">⚽ سجل الأهداف ومسجليها:</div>
+        <ul id="scorers-list" class="scorers-list-items">
+          <li style="color: var(--text-dim); font-size: 0.82rem;">لم يتم تسجيل أهداف بعد</li>
+        </ul>
+      </div>
+
+      <!-- Captain-Only Match Finalizer Buttons -->
+      <div id="captain-match-actions" class="captain-only-action" style="display: none; margin-top: 22px; justify-content: center; gap: 12px; flex-wrap: wrap;">
+        <button id="btn-finish-match" class="btn btn-gold">🏆 توثيق النتيجة وتتويج رجل المباراة</button>
+        <button id="btn-reset-match-scores" class="btn btn-secondary">تصفير النتيجة</button>
+      </div>
+    </div>
+
+    <!-- Fixed Matches & Weekly Schedule Section -->
+    <div class="schedule-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--gold-primary);">📅 جدول المواعيد والمباريات الثابتة</h3>
+          <p style="font-size: 0.8rem; color: var(--text-dim);">أيام وساعات اللعب المتفق عليها للشلة</p>
+        </div>
+        <button id="btn-open-add-schedule" class="btn btn-gold btn-sm captain-only-action" style="display: none;">+ إضافة موعد ثابت</button>
+      </div>
+
+      <div id="schedule-list" class="schedule-list"></div>
+    </div>
+
+  </section>
+
+
+  <!-- ======================================================== -->
+  <!-- TAB 4: MATCH HISTORY VIEW -->
+  <!-- ======================================================== -->
+  <section id="history-view" class="view-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2 style="font-size: 1.15rem; color: var(--neon-green); font-weight: 800;">سجل مباريات الشلة التاريخي</h2>
+      <button id="btn-clear-history" class="btn btn-danger btn-sm captain-only-action" style="display: none;">مسح السجل</button>
+    </div>
+
+    <div id="history-list" class="history-list"></div>
+  </section>
+
+</div>
+
+<!-- ======================================================== -->
+<!-- MODALS -->
+<!-- ======================================================== -->
+
+<!-- Modal: Captain Login (Strict & Confidential PIN) -->
+<div id="modal-captain-login" class="modal-overlay">
+  <div class="modal-content" style="max-width: 420px; text-align: center;">
+    <div class="modal-header">
+      <h3 class="modal-title">👑 تسجيل دخول كابتن الشلة</h3>
+      <button class="modal-close" id="btn-close-captain-modal">&times;</button>
+    </div>
+    <div style="margin-bottom: 18px;">
+      <div style="font-size: 3.2rem; margin-bottom: 8px;">👑</div>
+      <p style="font-size: 0.92rem; color: var(--text-mint);">
+        يرجى إدخال الرمز السري للكابتن لتفعيل الصلاحيات الكاملة:
+      </p>
+    </div>
+    <form id="form-captain-login">
+      <div class="form-group">
+        <div class="password-wrap">
+          <input type="password" id="input-captain-pin" class="form-input" placeholder="أدخل رمز الكابتن السري..." style="text-align: center; font-size: 1.15rem; letter-spacing: 2px;" required>
+          <button type="button" id="btn-toggle-pin-visibility" class="password-eye-btn" title="إظهار/إخفاء الرمز">👁️</button>
+        </div>
+      </div>
+      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-captain-login">إلغاء</button>
+        <button type="submit" class="btn btn-gold">تسجيل الدخول ككابتن</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: User Self-Registration with Advanced Face Cropper -->
+<div id="modal-player-self-register" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">📝 تسجيل اسمك وصورتك في الشلة</h3>
+      <button class="modal-close" id="btn-close-self-register-modal">&times;</button>
+    </div>
+
+    <form id="form-self-register">
+      <div class="form-group">
+        <label class="form-label" for="input-self-name">اسمك في الماتش *</label>
+        <input type="text" id="input-self-name" class="form-input" placeholder="اكتب اسمك أو لقبك المعروف..." required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="select-self-pos">مركزك المفضل في الملعب</label>
+        <select id="select-self-pos" class="select-styled" style="width: 100%;">
+          <option value="GK">🧤 حارس مرمى (GK)</option>
+          <option value="DEF">🛡️ مدافع صخرة (DEF)</option>
+          <option value="MID" selected>⚡ خط وسط مايسترو (MID)</option>
+          <option value="FWD">🎯 مهاجم قناص (FWD)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">صورة وجهك (اسحب وحرك الصورة لتوسيط الوجه بدقة)</label>
+        
+        <div class="face-cropper-container">
+          <div class="face-preview-circle" id="face-preview-circle">
+            <img id="face-preview-img" class="face-preview-img" src="./icons/icon-192.png" alt="Face Preview">
+          </div>
+          
+          <div style="text-align: center;">
+            <button type="button" id="btn-choose-self-photo" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+              📷 التقاط صورة أو رفع من جهازك
+            </button>
+            <input type="file" id="input-self-photo" accept="image/*" style="display: none;">
+          </div>
+
+          <div class="face-controls-row">
+            <span>🔍 التكبير:</span>
+            <input type="range" id="range-face-zoom" class="range-slider" min="1.0" max="3.5" step="0.1" value="1.0">
+            <span id="label-face-zoom">1.0x</span>
+          </div>
+
+          <div class="face-controls-row">
+            <span>↔️ يمين/يسار:</span>
+            <input type="range" id="range-face-x" class="range-slider" min="-60" max="60" step="2" value="0">
+            <span id="label-face-x">0</span>
+          </div>
+
+          <div class="face-controls-row">
+            <span>↕️ أعلى/أسفل:</span>
+            <input type="range" id="range-face-y" class="range-slider" min="-60" max="60" step="2" value="0">
+            <span id="label-face-y">0</span>
+          </div>
+
+          <small style="color: var(--text-dim); font-size: 0.78rem;">
+            💡 حرك أشرطة التكبير والإزاحة لضبط موضع وجهك تماماً داخل الدائرة!
+          </small>
+        </div>
+      </div>
+
+      <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" id="check-self-present" checked style="width: 20px; height: 20px; accent-color: var(--neon-green);">
+        <label for="check-self-present" style="font-size: 0.92rem; font-weight: 700; cursor: pointer;">
+          تأكيد حضوري لماتش اليوم ⚽
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px;">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-self-register">إلغاء</button>
+        <button type="submit" class="btn btn-gold">حفظ وتسجيل اسمي في الشلة 🚀</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Add/Edit Fixed Match Schedule (Captain Only) -->
+<div id="modal-schedule" class="modal-overlay">
+  <div class="modal-content" style="max-width: 440px;">
+    <div class="modal-header">
+      <h3 class="modal-title">📅 إضافة موعد مباراة ثابت للشلة</h3>
+      <button class="modal-close" id="btn-close-schedule-modal">&times;</button>
+    </div>
+    <form id="form-schedule">
+      <div class="form-group">
+        <label class="form-label" for="input-schedule-day">اليوم *</label>
+        <select id="input-schedule-day" class="select-styled" style="width: 100%;">
+          <option value="الجمعة">كل جمعة</option>
+          <option value="الخميس">كل خميس</option>
+          <option value="الثلاثاء">كل ثلاثاء</option>
+          <option value="الأحد">كل أحد</option>
+          <option value="الإثنين">كل إثنين</option>
+          <option value="الأربعاء">كل أربعاء</option>
+          <option value="السبت">كل سبت</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-schedule-time">ساعة اللعب والميعاد *</label>
+        <input type="text" id="input-schedule-time" class="form-input" placeholder="مثلاً: 8:00 مساءً إلى 9:30 مساءً" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-schedule-venue">الملعب / الموقع *</label>
+        <input type="text" id="input-schedule-venue" class="form-input" placeholder="مثلاً: ملعب النجوم / الملعب البلدي" required>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-schedule">إلغاء</button>
+        <button type="submit" class="btn btn-primary">حفظ الموعد الثابت</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Install App & Share Instructions -->
+<div id="modal-install-guide" class="modal-overlay">
+  <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-header">
+      <h3 class="modal-title">📲 تثبيت ومشاركة تطبيق شلتنا</h3>
+      <button class="modal-close" id="btn-close-install-modal">&times;</button>
+    </div>
+    
+    <div style="line-height: 1.9; font-size: 0.92rem;">
+      <div style="background: rgba(0, 255, 135, 0.12); border: 1px solid var(--neon-green); padding: 14px; border-radius: var(--radius-md); margin-bottom: 16px;">
+        <strong style="color: var(--neon-green); font-size: 1.05rem;">كيف تثبت التطبيق بنقرة واحدة؟</strong>
+        <p style="margin-top: 6px;">
+          • <strong>على أندرويد وكمبيوتر (Chrome/Edge):</strong><br>
+          اضغط على زر <strong>(تثبيت التطبيق الآن)</strong> أدناه أو من قائمة المتصفح (⋮) واختر <em>"تثبيت التطبيق"</em>.
+        </p>
+        <p style="margin-top: 6px;">
+          • <strong>على هواتف آيفون (Safari):</strong><br>
+          اضغط زر المشاركة <strong>(Share ⎋)</strong> أسفل المتصفح واختر <em>"إضافة إلى الصفحة الرئيسية" (Add to Home Screen)</em>.
+        </p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <button id="btn-trigger-pwa-direct" class="btn btn-primary" style="width: 100%;">
+          📲 اضغط هنا للتثبيت المباشر
+        </button>
+        <button id="btn-copy-install-link" class="btn btn-secondary" style="width: 100%;">
+          🔗 نسخ رابط التطبيق لإرساله للشباب
+        </button>
+        <button id="btn-whatsapp-install-share" class="btn btn-whatsapp" style="width: 100%;">
+          💬 إرسال رابط التطبيق لجروب الواتساب
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Captain Add/Edit Player (Captain Only) -->
+<div id="modal-player" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modal-player-title" class="modal-title">تعديل بيانات اللاعب (الكابتن)</h3>
+      <button class="modal-close" id="btn-close-player-modal">&times;</button>
+    </div>
+
+    <form id="form-player">
+      <input type="hidden" id="input-player-id">
+
+      <div class="form-group">
+        <label class="form-label" for="input-player-name">اسم اللاعب *</label>
+        <input type="text" id="input-player-name" class="form-input" placeholder="اسم اللاعب في الشلة..." required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="select-player-pos">المركز المفضل في الملعب</label>
+        <select id="select-player-pos" class="select-styled" style="width: 100%;">
+          <option value="GK">🧤 حارس مرمى (GK)</option>
+          <option value="DEF">🛡️ مدافع صخرة (DEF)</option>
+          <option value="MID" selected>⚡ خط وسط مايسترو (MID)</option>
+          <option value="FWD">🎯 مهاجم قناص (FWD)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">التقييم الفني الشامل (من 1 إلى 10)</label>
+        <div class="range-slider-wrap">
+          <input type="range" id="input-player-rating" class="range-slider" min="1" max="10" step="0.5" value="7.5">
+          <span id="label-rating-value" class="range-value">7.5</span>
+        </div>
+        <small id="rating-desc" style="color: var(--text-dim); font-size: 0.78rem;">مستوى جيد جداً</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">صورة أو أفاتار اللاعب</label>
+        <div class="avatar-presets" id="avatar-presets-list">
+          <div class="avatar-preset-option selected" data-avatar="⚽">⚽</div>
+          <div class="avatar-preset-option" data-avatar="🦁">🦁</div>
+          <div class="avatar-preset-option" data-avatar="🦅">🦅</div>
+          <div class="avatar-preset-option" data-avatar="⚡">⚡</div>
+          <div class="avatar-preset-option" data-avatar="🔥">🔥</div>
+          <div class="avatar-preset-option" data-avatar="👑">👑</div>
+          <div class="avatar-preset-option" data-avatar="🧤">🧤</div>
+          <div class="avatar-preset-option" data-avatar="🎯">🎯</div>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <button type="button" id="btn-choose-player-photo" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+            📷 أو رفع صورة حقيقية
+          </button>
+          <input type="file" id="input-player-photo" accept="image/*" style="display: none;">
+          <span id="photo-file-name" style="font-size: 0.78rem; color: var(--neon-green); margin-right: 8px;"></span>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-player">إلغاء</button>
+        <button type="submit" class="btn btn-primary">حفظ التعديلات</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Send Captain Rich Announcement -->
+<div id="modal-broadcast" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">📢 إرسال إشعار مصور للشلة</h3>
+      <button class="modal-close" id="btn-close-broadcast-modal">&times;</button>
+    </div>
+    <form id="form-broadcast">
+      <div class="form-group">
+        <label class="form-label" for="input-broadcast-text">نص رسالة الكابتن *</label>
+        <textarea id="input-broadcast-text" class="form-input" style="height: 90px;" placeholder="اكتب التنبيه هنا (موعد الماتش، الملعب، لون التيشرتات...)" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">صورة الإشعار (اختياري)</label>
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+          <img id="broadcast-preview-thumb" src="./icons/icon-192.png" style="width: 54px; height: 54px; border-radius: 10px; object-fit: cover; border: 1px solid var(--neon-green);" alt="Preview">
+          <button type="button" id="btn-choose-broadcast-photo" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+            📷 اختيار صورة من جهازك
+          </button>
+          <input type="file" id="input-broadcast-photo" accept="image/*" style="display: none;">
+        </div>
+      </div>
+
+      <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+        <input type="checkbox" id="check-send-push" checked style="width: 20px; height: 20px; accent-color: var(--neon-green);">
+        <label for="check-send-push" style="font-size: 0.88rem; font-weight: 600; cursor: pointer;">
+          إرسال كـ إشعار منبثق في شريط الهاتف والكمبيوتر (Push Notification)
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-broadcast">إلغاء</button>
+        <button type="submit" class="btn btn-primary">🚀 بث الإشعار الآن</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: MVP Celebration -->
+<div id="modal-mvp" class="modal-overlay">
+  <div class="modal-content" style="max-width: 460px;">
+    <div class="mvp-celebration-card">
+      <div class="mvp-trophy">🏆</div>
+      <h3 style="font-size: 1.6rem; font-weight: 900; color: var(--gold-primary); margin-bottom: 6px;">
+        رجل المباراة (Man of the Match)
+      </h3>
+      <p id="mvp-winner-team" style="font-size: 1rem; color: #ffffff; margin-bottom: 14px; font-weight: 700;"></p>
+      
+      <div style="background: rgba(0,0,0,0.5); border-radius: 16px; padding: 14px; border: 1px solid var(--gold-primary); margin-bottom: 16px;">
+        <div id="mvp-player-name" style="font-size: 1.35rem; font-weight: 900; color: #ffffff; margin-bottom: 4px;"></div>
+        <div id="mvp-player-stats" style="font-size: 0.9rem; color: var(--gold-primary); font-weight: 700;"></div>
+      </div>
+
+      <button id="btn-close-mvp" class="btn btn-gold" style="width: 100%;">مبارك للشباب! ⚽🔥</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Pick Goal Scorer (Captain Only) -->
+<div id="modal-goalscorer" class="modal-overlay">
+  <div class="modal-content" style="max-width: 420px;">
+    <div class="modal-header">
+      <h3 class="modal-title">مين صاحب الهدف؟ ⚽</h3>
+      <button class="modal-close" id="btn-close-scorer-modal">&times;</button>
+    </div>
+    <div id="scorers-pick-buttons" style="display: flex; flex-direction: column; gap: 8px;"></div>
+  </div>
+</div>
+
+<!-- Modal: Share to WhatsApp Preview -->
+<div id="modal-share" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">مشاركة التشكيلة مع الشلة 💬</h3>
+      <button class="modal-close" id="btn-close-share-modal">&times;</button>
+    </div>
+    <textarea id="share-text-area" class="form-input" style="height: 180px; font-family: monospace; font-size: 0.88rem;" readonly></textarea>
+    <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
+      <button id="btn-copy-share-text" class="btn btn-secondary">📋 نسخ النص</button>
+      <button id="btn-launch-whatsapp" class="btn btn-whatsapp">🚀 فتح في واتساب</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: In-App Notification Center with Delete Functionality -->
+<div id="modal-notifications-center" class="modal-overlay">
+  <div class="modal-content" style="max-width: 540px;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.4rem;">🔔</span>
+        <h3 class="modal-title">مركز إشعارات وتنبيهات الشلة</h3>
+      </div>
+      <button class="modal-close" id="btn-close-notifications-modal">&times;</button>
+    </div>
+
+    <!-- Captain Special Notification Actions (Visible only to Captain) -->
+    <div id="captain-notif-actions" class="captain-only-action" style="display: none; background: rgba(255, 215, 0, 0.08); border: 1px dashed var(--gold-primary); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 14px; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;">
+      <span style="font-size: 0.82rem; font-weight: 800; color: var(--gold-primary);">👑 تحكم الكابتن:</span>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button id="btn-open-announcement-modal" class="btn btn-gold btn-sm">
+          📢 بث إشعار مصور
+        </button>
+        <button id="btn-captain-send-reminder" class="btn btn-primary btn-sm">
+          ⏰ تذكير الماتش (12 ساعة)
+        </button>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px; flex-wrap: wrap;">
+      <button id="btn-request-phone-notif" class="btn btn-gold btn-sm">
+        🔔 تفعيل الإشعارات في أعلى الهاتف
+      </button>
+      <button id="btn-clear-all-notifs" class="btn btn-secondary btn-sm" style="color: var(--accent-red); border-color: rgba(255, 51, 102, 0.4);">
+        🗑️ مسح جميع الإشعارات
+      </button>
+    </div>
+
+    <div id="notifications-list" class="notifications-list">
+      <!-- Populated dynamically: each notification has title, message, time, and delete button -->
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Firebase Realtime Cloud Settings -->
+<div id="modal-firebase-settings" class="modal-overlay">
+  <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.4rem;">☁️</span>
+        <h3 class="modal-title">إعدادات المزامنة السحابية (Firebase)</h3>
+      </div>
+      <button class="modal-close" id="btn-close-firebase-modal">&times;</button>
+    </div>
+
+    <div style="background: rgba(0, 255, 135, 0.08); border: 1px solid rgba(0, 255, 135, 0.25); border-radius: var(--radius-md); padding: 12px; margin-bottom: 14px; font-size: 0.85rem; color: var(--text-mint);">
+      💡 المزامنة السحابية الحقيقية تتيح لجميع اللاعبين رؤية التشكيلة المحدثة والأهداف فوراً على هواتفهم دون أي تأخير.
+    </div>
+
+    <form id="form-firebase-config">
+      <div class="form-group">
+        <label class="form-label" for="input-room-code">رمز غرفة الشلة (Room Code):</label>
+        <input type="text" id="input-room-code" class="form-input" placeholder="مثلاً: sheletna-main" required>
+        <small style="color: var(--text-dim); font-size: 0.75rem;">جميع المستخدمين الذين يشاركون نفس الرمز يتزامنون معاً فورياً.</small>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-firebase-apikey">Firebase API Key (مفتاح المشروع):</label>
+        <input type="text" id="input-firebase-apikey" class="form-input" placeholder="AIzaSy...">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-firebase-projectid">Firebase Project ID (معرف المشروع):</label>
+        <input type="text" id="input-firebase-projectid" class="form-input" placeholder="sheletna-app-...">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="input-firebase-appid">Firebase App ID:</label>
+        <input type="text" id="input-firebase-appid" class="form-input" placeholder="1:...:web:...">
+      </div>
+
+      <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+        <button type="button" id="btn-test-firebase" class="btn btn-secondary btn-sm">🔄 فحص الاتصال الآن</button>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btn-cancel-firebase" class="btn btn-secondary btn-sm">إلغاء</button>
+          <button type="submit" class="btn btn-primary btn-sm">حفظ وإعادة الاتصال 🚀</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script src="./app.js"></script>
+</body>
+</html>
